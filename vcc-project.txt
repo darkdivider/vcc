@@ -1,0 +1,27 @@
+This is an experimental server set up for testin laod balancing algorithms
+
+In Linux environment run commands
+
+"service docker start"
+"docker-compose up --build"
+
+Once docker is up and running, run 
+
+"python gen_requests.py"
+
+with the following arguments
+
+positional arguments:
+  n                     Number of requests
+
+options:
+  -h, --help            show this help message and exit
+  --method {rn,rr,ls,lt}, -m {rn,rr,ls,lt}
+                        Balancing method(rn:random, rb:roundrobin, ls: least mean, lt: last)
+  --apps {1,2,3,4,5,6,7}, -a {1,2,3,4,5,6,7}
+                        Number of server apps running
+
+This runs requests and prints 
+response time per request
+cycle time in seconds per request
+overheads for load balancing in seconds per request
