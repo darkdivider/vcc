@@ -1,27 +1,26 @@
-This is an experimental server set up for testin laod balancing algorithms
+This is an experimental server set up for testin load balancing algorithms
 
 In Linux environment run commands
 
 "service docker start"
 "docker-compose up --build"
 
-Once docker is up and running, run 
+Once docker is up and running, run "python gen_arg.py" . This generates the file "arguments.txt"
+Run " python main.py" This generates the file "results.txt" which gives the results of the experiment.
 
-"python gen_requests.py"
+The test is done for 3 types of requesting scheme:
+ - 'f': Flood requesting by generating requests at max frequency
+ - 'r': Random delay from 0 to 100 ms and parallel requesting
+ - 's': Sequential requesting. Next request made only upon recieving previous response
 
-with the following arguments
+4 types of load balancing are done:
+ - 'rn': App selected at random
+ - 'rr': App selected in round robin fashion (whether free or not)
+ - 'ls': Least mean response time
+ - 'lt': Least last response time
 
-positional arguments:
-  n                     Number of requests
+Upto 10000 requests are made.
 
-options:
-  -h, --help            show this help message and exit
-  --method {rn,rr,ls,lt}, -m {rn,rr,ls,lt}
-                        Balancing method(rn:random, rb:roundrobin, ls: least mean, lt: last)
-  --apps {1,2,3,4,5,6,7}, -a {1,2,3,4,5,6,7}
-                        Number of server apps running
+Upto 7 apps are used.
 
-This runs requests and prints 
-response time per request
-cycle time in seconds per request
-overheads for load balancing in seconds per request
+All the apps are identical
