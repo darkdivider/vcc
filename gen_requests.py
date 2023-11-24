@@ -6,6 +6,8 @@ import numpy as np
 import random
 import argparse
 import pdb
+import time
+import pandas as pd
 import matplotlib.pyplot as plt
 plt.switch_backend('agg')
 
@@ -50,25 +52,24 @@ def make_request(method='rn'):
 
 
 def runtest_flood(n_iter=100, method='random'):
-
     with ThreadPoolExecutor() as executor:
         start = datetime.now()
         # Send a GET request
         futures = [executor.submit(make_request, method)
-                   for _ in tqdm(range(n_iter))]
+                   for _ in tqdm(range(n_iter), leave=False)]
         wait(futures)
         cycle_time.append((datetime.now()-start).total_seconds())
 
 def runtest_seq(n_iter=100,method='random'):
     start = datetime.now()
-    for _ in tqdm(range(n_iter)):
+    for _ in tqdm(range(n_iter), leave=False):
         make_request(method)
     cycle_time.append((datetime.now()-start).total_seconds())
 
 def runtest_ran(n_iter=100,method='random'):
     start = datetime.now()
-    for _ in tqdm(range(n_iter)):
-        time.sleep(random.random())
+    for _ in tqdm(range(n_iter), leave=False):
+        time.sleep(random.random()*0.1)
         make_request(method)
     cycle_time.append((datetime.now()-start).total_seconds())
 
@@ -76,6 +77,16 @@ def trim_dict(D,t):
     if t>=len(D.keys()):
         return D
     return {key:D[key] for key in list(D.keys())[:t]}
+
+def dump_csv(dump_data, results_file = 'results.csv'):
+    try:
+        existing_data = pd.read_csv(results_file)
+    except FileNotFoundError:
+        existing_data = pd.DataFrame()
+    # pdb.set_trace()
+    new_data = pd.DataFrame([dump_data])
+    combined_data = pd.concat([existing_data, new_data], ignore_index=True)
+    combined_data.to_csv(results_file, index=False)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -86,6 +97,8 @@ if __name__ == '__main__':
                          default = 7, choices = range(1,8), type=int)
     parser.add_argument('--req', '-r', help='requests mode(f: flood, r:random, s:sequential)',
                          default = 'f', choices = ['f', 'r', 's'], )
+    parser.add_argument('--verbose', '-v', action='store_true', help=' Enable verbose mode')
+    
     args = parser.parse_args()
     ports = {'app1': 5001, 'app2': 5002, 'app3': 5003,
              'app4': 5004, 'app5': 5005, 'app6': 5006, 'app7': 5007}
@@ -110,23 +123,48 @@ if __name__ == '__main__':
     rtf = 0
 
     if args.req=='f':
+        m = 'Flood requesting'
         runtest_flood(n, method)
     elif args.req=='r':
+        m = 'Random Requesting'
         runtest_ran(n, method)
     else:
+        m = 'Sequential Requesting'
         runtest_seq(n, method)
         
     lags = np.concatenate(list(rtl.values()))
     mean_lag = lags.mean()
     std_lag = lags.std()
     
-    methods = {'rr':'RoundRobin', 'rn': 'Random', 'ls': 'Least time', 'lt': 'Least Last time'}
+    if args.verbose:
+        methods = {'rr':'RoundRobin', 'rn': 'Random', 'ls': 'Least time', 'lt': 'Least Last time'}
+        print(m)
+        print(f'\nNumber of apps: {len(ports.keys())}')
+        print(f'Method : {methods[method]}')
+        print(f'Cycletime / request : {sum(cycle_time)/n:0.3g} s')
+        print(f'Response time / request : {mean_lag:0.3g} +/- {std_lag:0.3g} s')
+        print(f'Overheads / request : {sum(overheads)/n:0.3g} s')
+        print(rtc)
+    else:
+        # pdb.set_trace()
+        for i, arg in enumerate(list(vars(args).items())):
+            print(f'{arg[0]}: {arg[1]}', end='')
+            if i==(len(vars(args))-1):
+                print()
+            else:
+                print(end=' | ')
 
-    print(f'\nNumber of apps: {len(ports.keys())}')
-    print(f'Method : {methods[method]}')
-    print(f'Cycletime / request : {sum(cycle_time)/n:0.3g} s')
-    print(f'Response time / request : {mean_lag:0.3g} +/- {std_lag:0.3g} s')
-    print(f'Overheads / request : {sum(overheads)/n:0.3g} s')
-    print(rtc)
-    plt.plot(rtc.values())
-    plt.show()
+    # pdb.set_trace()
+    dump_data={'method':vars(args)['method']}
+    dump_data.update({'req':vars(args)['req']})
+    dump_data.update({'n':vars(args)['n']})
+    dump_data.update({'n_apps':vars(args)['apps']})
+    dump_data.update( {'calls_'+key:val for key,val in rtc.items()})
+    dump_data.update({'max_'+key:max(val) if val else 0 for key,val in rtl.items()})
+    dump_data.update({'min_'+key:min(val) if val else 0 for key,val in rtl.items()})
+    dump_data.update({'mean_'+key:np.array(val).mean() if val else 0 for key,val in rtl.items()})
+    dump_data.update({'std_'+key:np.array(val).std() if val else 0 for key,val in rtl.items()})
+    dump_data.update({'ovh_per_req':sum(overheads)/n })
+    dump_data.update({'ct_per_req':sum(cycle_time)/n})
+
+    dump_csv(dump_data)
