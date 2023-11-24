@@ -6,7 +6,6 @@ import time
 app1 = Flask(__name__)
 @app1.route('/')
 def hello_world():
-    time.sleep(0.05)
     return 'Hi this is app1'
 
 if __name__=='__main__':
