@@ -10,6 +10,9 @@ import time
 import pandas as pd
 import matplotlib.pyplot as plt
 plt.switch_backend('agg')
+import os, psutil
+
+ps=psutil.Process(os.getpid())
 
 def make_request(method='rn'):
     ostart = datetime.now()
@@ -51,7 +54,7 @@ def make_request(method='rn'):
     return response, lag
 
 
-def runtest_flood(n_iter=100, method='random'):
+def runtest_flood(n_iter=100, method = 'rn'):
     with ThreadPoolExecutor() as executor:
         start = datetime.now()
         # Send a GET request
@@ -60,18 +63,21 @@ def runtest_flood(n_iter=100, method='random'):
         wait(futures)
         cycle_time.append((datetime.now()-start).total_seconds())
 
-def runtest_seq(n_iter=100,method='random'):
+def runtest_seq(n_iter=100, method = 'rn'):
     start = datetime.now()
     for _ in tqdm(range(n_iter), leave=False):
         make_request(method)
-    cycle_time.append((datetime.now()-start).total_seconds())
+    cycle_time.append((datetime.now()-start).total_seconds()-sum([value for sublist in rtl.values() for value in sublist]))
 
-def runtest_ran(n_iter=100,method='random'):
+def runtest_ran(n_iter=100, method = 'rn'):
+    sleep_times=0
     start = datetime.now()
     for _ in tqdm(range(n_iter), leave=False):
-        time.sleep(random.random()*0.1)
+        sleep_time = random.random()*0.1
+        time.sleep(sleep_time)
         make_request(method)
-    cycle_time.append((datetime.now()-start).total_seconds())
+        sleep_times+=sleep_time
+    cycle_time.append((datetime.now()-start).total_seconds()-sleep_times)
 
 def trim_dict(D,t):
     if t>=len(D.keys()):
